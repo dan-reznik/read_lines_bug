@@ -1,0 +1,82 @@
+---
+title: "Issue with readr::read_lines()' skip & n_max"
+author: Dan S. Reznik
+date: 2019-04-08
+output: github_document
+---
+
+```{r}
+suppressMessages(library(tidyverse))
+```
+
+Confirm UTF-8 encoding of included zip file (it contains a larger .txt)
+
+```{r}
+fname <- "test_file.zip"
+guess_encoding(fname)
+```
+
+Read all lines in zip (approx. 31.6k)
+
+```{r}
+all_lines <- read_lines(fname)
+length(all_lines)
+```
+
+Notice all lines have "well-formed" terminations with a carriage-return followed by a newline.
+
+```{r}
+{
+  s <- read_file(fname)
+  print(s %>% str_count("\\r"))
+  print(s %>% str_count("\\n"))
+  print(s %>% str_count("\\r\\n"))
+  print(s %>% str_count("\\n\\r"))
+}
+```
+
+For this file, the separator is ";" (irrelevant for read_lines()), and there should be 45 per line. However, notice a few lines have a non-standard number of separators (';'), namely: 46 and 48.
+
+```{r}
+all_lines %>%
+  str_count(";") %>%
+  table
+```
+
+List which lines have the wrong number of separators, as this will drive us to the bug.
+
+```{r}
+all_lines %>%
+  str_count(";") %>%
+  {which(.!=45)}
+```
+
+Use `read_lines()` to read only the first lines with the wrong number of separators, shown above to be line # 14579. So "skip" that number of lines minus one.
+
+```{r}
+line1 <- read_lines(fname,
+                    skip=14578,
+                    n_max=1)
+```
+
+Notice its content not only has a different number of separators, it's a different line altogether! (herein lies the bug)
+
+```{r}
+all_lines[14579] %>% str_count(";")
+line1 %>% str_count(";")
+all_lines[14579] == line1
+```
+
+Notice the line retrieved by `read_lines(skip=14578,n_max=1)` above actually appears much later in the file, suggesting the reading under this skip+n_max mode lost "sync".
+
+```{r}
+(all_lines==line1)%>%which
+```
+
+Notes: 
+* this bug is not caused by the .zip (same behavior if starts from an uncompressed file)
+* this is not related to encoding, in fact, I made sure the file inside the zip is UTF-8
+* this issue seems to manifest itself with longer files only. potentially there's a character within this file being interpreted as a carriage return.
+
+
+
