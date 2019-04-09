@@ -31,6 +31,60 @@ length(all_lines)
 
     ## [1] 31695
 
+``` r
+source("./weird_row.R")
+weird_row <- find_weird_row(15000,1,length(all_lines))
+```
+
+    ## [1] 15000
+    ## [1] 7500
+    ## [1] 3750
+    ## [1] 5625
+    ## [1] 6562
+    ## [1] 7031
+    ## [1] 7265
+    ## [1] 7382
+    ## [1] 7323
+    ## [1] 7352
+    ## [1] 7367
+    ## [1] 7374
+    ## [1] 7378
+    ## [1] 7380
+    ## [1] 7379
+    ## [1] 7379
+    ## [1] "line 7379 with l_eq=TRUE"
+
+``` r
+cmp_lines <- function(fname,row) {
+  ok<-read_lines(fname,
+           skip=row,n_max=1)==all_lines[row+1]
+  print(sprintf("testing line %d: %s",row,if(ok)"same"else"diff"))
+}
+cmp_lines(fname,weird_row)
+```
+
+    ## [1] "testing line 7379: same"
+
+``` r
+cmp_lines(fname,weird_row+1)
+```
+
+    ## [1] "testing line 7380: diff"
+
+The first line to differ appear much later in the file
+
+``` r
+weird_row+1
+```
+
+    ## [1] 7380
+
+``` r
+(read_lines(fname,skip=weird_row+1,n_max=1)==all_lines)%>%which
+```
+
+    ## [1] 8887
+
 Notice all lines have “well-formed” terminations with a carriage-return
 followed by a newline.
 
@@ -116,8 +170,12 @@ this skip+n\_max mode lost “sync”.
 
     ## [1] 17923
 
-Notes: \* this bug is not caused by the .zip (same behavior if starts
-from an uncompressed file) \* this is not related to encoding, in fact,
-I made sure the file inside the zip is UTF-8 \* this issue seems to
-manifest itself with longer files only. potentially there’s a character
-within this file being interpreted as a carriage return.
+Notes:
+
+  - this bug is not caused by the .zip (same behavior if starts from an
+    uncompressed file)
+  - this is not related to encoding, in fact, I made sure the file
+    inside the zip is UTF-8
+  - this issue seems to manifest itself with longer files only.
+    potentially there’s a character within this file being interpreted
+    as a carriage return.
